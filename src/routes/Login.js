@@ -106,6 +106,11 @@ const Login = () => {
               Administrator Registration
             </Link>
           </p>
+          <p>
+            <Link to="/forgot-password" className="form-link">
+              Forgot Password?
+            </Link>
+          </p>
         </div>
       </div>
     </div>

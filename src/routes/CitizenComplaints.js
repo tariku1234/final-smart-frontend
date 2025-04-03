@@ -197,34 +197,36 @@ const CitizenComplaints = () => {
       return false
     }
 
-    // Don't show escalate option for second stage complaints
-    if (
-      complaint.currentStage === "stakeholder_second" ||
-      complaint.currentStage === "wereda_second" ||
-      complaint.currentStage === "kifleketema_second"
-    ) {
-      return false
-    }
-
     // Check if the complaint can be escalated based on current stage and due date
     switch (complaint.currentStage) {
       case "stakeholder_first":
-        // Can only escalate to second stage if there's a response or due date has passed
+        // Can only escalate to next level if due date has passed
+        // For stakeholder_first, we don't allow escalation if there's a response (use second stage instead)
+        return now > new Date(complaint.stakeholderFirstResponseDue) && complaint.status !== "in_progress"
+      case "stakeholder_second":
+        // Can escalate to Wereda if there's a response or due date has passed
         return (
-          now > new Date(complaint.stakeholderFirstResponseDue) ||
-          (complaint.responses.length > 0 && complaint.status !== "resolved")
+          now > new Date(complaint.stakeholderSecondResponseDue) ||
+          (complaint.responses.length > 1 && complaint.status === "in_progress")
         )
       case "wereda_first":
-        // Can only escalate to wereda second if there's a response or due date has passed
+        // Can only escalate to next level if due date has passed
+        // For wereda_first, we don't allow escalation if there's a response (use second stage instead)
+        return now > new Date(complaint.weredaFirstResponseDue) && complaint.status !== "in_progress"
+      case "wereda_second":
+        // Can escalate to Kifleketema if there's a response or due date has passed
         return (
-          now > new Date(complaint.weredaFirstResponseDue) ||
-          (complaint.responses.length > 2 && complaint.status !== "resolved")
+          now > new Date(complaint.weredaSecondResponseDue) ||
+          (complaint.responses.length > 3 && complaint.status === "in_progress")
         )
       case "kifleketema_first":
-        // Can only escalate to kifleketema second if there's a response or due date has passed
+        // Can only escalate to next level if due date has passed
+        return now > new Date(complaint.kifleketemaFirstResponseDue) && complaint.status !== "in_progress"
+      case "kifleketema_second":
+        // Can escalate to Kentiba if there's a response or due date has passed
         return (
-          now > new Date(complaint.kifleketemaFirstResponseDue) ||
-          (complaint.responses.length > 4 && complaint.status !== "resolved")
+          now > new Date(complaint.kifleketemaSecondResponseDue) ||
+          (complaint.responses.length > 5 && complaint.status === "in_progress")
         )
       case "kentiba":
         return false // Cannot escalate beyond Kentiba

@@ -47,6 +47,7 @@ const ComplaintDetail = () => {
     fetchComplaintDetails()
   }, [user, navigate, fetchComplaintDetails])
 
+  // Update the handleEscalate function to handle errors properly
   const handleEscalate = async () => {
     try {
       setEscalationSuccess(null)
@@ -175,7 +176,7 @@ const ComplaintDetail = () => {
     )
   }
 
-  // Update the canEscalate function to exclude second stage complaints
+  // Update the canEscalate function to properly handle escalation conditions
   const canEscalate = (complaint) => {
     if (!complaint) return false
 
@@ -186,34 +187,36 @@ const ComplaintDetail = () => {
       return false
     }
 
-    // Don't show escalate option for second stage complaints
-    if (
-      complaint.currentStage === "stakeholder_second" ||
-      complaint.currentStage === "wereda_second" ||
-      complaint.currentStage === "kifleketema_second"
-    ) {
-      return false
-    }
-
     // Check if the complaint can be escalated based on current stage and due date
     switch (complaint.currentStage) {
       case "stakeholder_first":
-        // Can only escalate to second stage if there's a response or due date has passed
+        // Can only escalate to next level if due date has passed
+        // For stakeholder_first, we don't allow escalation if there's a response (use second stage instead)
+        return now > new Date(complaint.stakeholderFirstResponseDue) && complaint.status !== "in_progress"
+      case "stakeholder_second":
+        // Can escalate to Wereda if there's a response or due date has passed
         return (
-          now > new Date(complaint.stakeholderFirstResponseDue) ||
-          (complaint.responses.length > 0 && complaint.status !== "resolved")
+          now > new Date(complaint.stakeholderSecondResponseDue) ||
+          (complaint.responses.length > 1 && complaint.status === "in_progress")
         )
       case "wereda_first":
-        // Can only escalate to wereda second if there's a response or due date has passed
+        // Can only escalate to next level if due date has passed
+        // For wereda_first, we don't allow escalation if there's a response (use second stage instead)
+        return now > new Date(complaint.weredaFirstResponseDue) && complaint.status !== "in_progress"
+      case "wereda_second":
+        // Can escalate to Kifleketema if there's a response or due date has passed
         return (
-          now > new Date(complaint.weredaFirstResponseDue) ||
-          (complaint.responses.length > 2 && complaint.status !== "resolved")
+          now > new Date(complaint.weredaSecondResponseDue) ||
+          (complaint.responses.length > 3 && complaint.status === "in_progress")
         )
       case "kifleketema_first":
-        // Can only escalate to kifleketema second if there's a response or due date has passed
+        // Can only escalate to next level if due date has passed
+        return now > new Date(complaint.kifleketemaFirstResponseDue) && complaint.status !== "in_progress"
+      case "kifleketema_second":
+        // Can escalate to Kentiba if there's a response or due date has passed
         return (
-          now > new Date(complaint.kifleketemaFirstResponseDue) ||
-          (complaint.responses.length > 4 && complaint.status !== "resolved")
+          now > new Date(complaint.kifleketemaSecondResponseDue) ||
+          (complaint.responses.length > 5 && complaint.status === "in_progress")
         )
       case "kentiba":
         return false // Cannot escalate beyond Kentiba
@@ -354,6 +357,9 @@ const ComplaintDetail = () => {
 
     return responsesByStage
   }
+
+  // Add this near the top of the component
+  const now = new Date()
 
   if (loading) {
     return <div className="loading">Loading complaint details...</div>
@@ -541,6 +547,7 @@ const ComplaintDetail = () => {
                 <div className="response-body">
                   <p>{responsesByStage.stakeholder_first[0].response}</p>
                 </div>
+                {/* Update the response actions for stakeholder_first stage */}
                 {complaint.currentStage === "stakeholder_first" && hasResponseForCurrentStage(complaint) && (
                   <div className="response-actions">
                     <button onClick={handleAcceptResponse} className="btn btn-resolve">
@@ -553,9 +560,12 @@ const ComplaintDetail = () => {
                     >
                       Submit Second Stage
                     </Link>
-                    <button onClick={handleEscalate} className="btn btn-escalate">
-                      Escalate to Next Level
-                    </button>
+                    {/* Only show escalate button if due date has passed and no response */}
+                    {now > new Date(complaint.stakeholderFirstResponseDue) && complaint.status !== "in_progress" && (
+                      <button onClick={handleEscalate} className="btn btn-escalate">
+                        Escalate to Next Level
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -641,6 +651,7 @@ const ComplaintDetail = () => {
                   <div className="response-body">
                     <p>{responsesByStage.wereda_first[0].response}</p>
                   </div>
+                  {/* Update the response actions for wereda_first stage */}
                   {complaint.currentStage === "wereda_first" && hasResponseForCurrentStage(complaint) && (
                     <div className="response-actions">
                       <button onClick={handleAcceptResponse} className="btn btn-resolve">
@@ -653,8 +664,189 @@ const ComplaintDetail = () => {
                       >
                         Submit Second Stage
                       </Link>
+                      {/* Only show escalate button if due date has passed and no response */}
+                      {now > new Date(complaint.weredaFirstResponseDue) && complaint.status !== "in_progress" && (
+                        <button onClick={handleEscalate} className="btn btn-escalate">
+                          Escalate to Next Level
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="no-response">No response received yet.</p>
+              )}
+            </div>
+          )}
+          {/* Wereda Second Stage */}
+          {(complaint.currentStage === "wereda_second" ||
+            complaint.currentStage === "kifleketema_first" ||
+            complaint.currentStage === "kifleketema_second" ||
+            complaint.currentStage === "kentiba" ||
+            responsesByStage.wereda_second.length > 0) && (
+            <div className="stage-response-section">
+              <h3 className="stage-title">Wereda (Second Stage)</h3>
+              {responsesByStage.wereda_second && responsesByStage.wereda_second.length > 0 ? (
+                <div className="response-card">
+                  <div className="response-header">
+                    <div className="response-info">
+                      <span className="response-from">
+                        From:{" "}
+                        {responsesByStage.wereda_second[0].responder
+                          ? `${responsesByStage.wereda_second[0].responder.firstName} ${responsesByStage.wereda_second[0].responder.lastName}`
+                          : getHandlerLabel(responsesByStage.wereda_second[0].responderRole)}
+                      </span>
+                      <span className="response-date">{formatDate(responsesByStage.wereda_second[0].createdAt)}</span>
+                    </div>
+                    <span className={getStatusBadgeClass(responsesByStage.wereda_second[0].status)}>
+                      {responsesByStage.wereda_second[0].status.replace("_", " ")}
+                    </span>
+                  </div>
+                  <div className="response-body">
+                    <p>{responsesByStage.wereda_second[0].response}</p>
+                  </div>
+                  {complaint.currentStage === "wereda_second" && hasResponseForCurrentStage(complaint) && (
+                    <div className="response-actions">
+                      <button onClick={handleAcceptResponse} className="btn btn-resolve">
+                        Resolve Complaint
+                      </button>
                       <button onClick={handleEscalate} className="btn btn-escalate">
-                        Escalate to Next Level
+                        Escalate to Kifleketema
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="no-response">No response received yet.</p>
+              )}
+            </div>
+          )}
+
+          {/* Kifleketema First Stage */}
+          {(complaint.currentStage === "kifleketema_first" ||
+            complaint.currentStage === "kifleketema_second" ||
+            complaint.currentStage === "kentiba" ||
+            responsesByStage.kifleketema_first.length > 0) && (
+            <div className="stage-response-section">
+              <h3 className="stage-title">Kifleketema (First Stage)</h3>
+              {responsesByStage.kifleketema_first && responsesByStage.kifleketema_first.length > 0 ? (
+                <div className="response-card">
+                  <div className="response-header">
+                    <div className="response-info">
+                      <span className="response-from">
+                        From:{" "}
+                        {responsesByStage.kifleketema_first[0].responder
+                          ? `${responsesByStage.kifleketema_first[0].responder.firstName} ${responsesByStage.kifleketema_first[0].responder.lastName}`
+                          : getHandlerLabel(responsesByStage.kifleketema_first[0].responderRole)}
+                      </span>
+                      <span className="response-date">
+                        {formatDate(responsesByStage.kifleketema_first[0].createdAt)}
+                      </span>
+                    </div>
+                    <span className={getStatusBadgeClass(responsesByStage.kifleketema_first[0].status)}>
+                      {responsesByStage.kifleketema_first[0].status.replace("_", " ")}
+                    </span>
+                  </div>
+                  <div className="response-body">
+                    <p>{responsesByStage.kifleketema_first[0].response}</p>
+                  </div>
+                  {complaint.currentStage === "kifleketema_first" && hasResponseForCurrentStage(complaint) && (
+                    <div className="response-actions">
+                      <button onClick={handleAcceptResponse} className="btn btn-resolve">
+                        Resolve Complaint
+                      </button>
+                      <Link
+                        to={`/complaint?stage=second&complaintId=${complaint._id}`}
+                        className="btn btn-primary"
+                        title="Submit a second stage complaint"
+                      >
+                        Submit Second Stage
+                      </Link>
+                      {now > new Date(complaint.kifleketemaFirstResponseDue) && complaint.status !== "in_progress" && (
+                        <button onClick={handleEscalate} className="btn btn-escalate">
+                          Escalate to Next Level
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="no-response">No response received yet.</p>
+              )}
+            </div>
+          )}
+
+          {/* Kifleketema Second Stage */}
+          {(complaint.currentStage === "kifleketema_second" ||
+            complaint.currentStage === "kentiba" ||
+            responsesByStage.kifleketema_second.length > 0) && (
+            <div className="stage-response-section">
+              <h3 className="stage-title">Kifleketema (Second Stage)</h3>
+              {responsesByStage.kifleketema_second && responsesByStage.kifleketema_second.length > 0 ? (
+                <div className="response-card">
+                  <div className="response-header">
+                    <div className="response-info">
+                      <span className="response-from">
+                        From:{" "}
+                        {responsesByStage.kifleketema_second[0].responder
+                          ? `${responsesByStage.kifleketema_second[0].responder.firstName} ${responsesByStage.kifleketema_second[0].responder.lastName}`
+                          : getHandlerLabel(responsesByStage.kifleketema_second[0].responderRole)}
+                      </span>
+                      <span className="response-date">
+                        {formatDate(responsesByStage.kifleketema_second[0].createdAt)}
+                      </span>
+                    </div>
+                    <span className={getStatusBadgeClass(responsesByStage.kifleketema_second[0].status)}>
+                      {responsesByStage.kifleketema_second[0].status.replace("_", " ")}
+                    </span>
+                  </div>
+                  <div className="response-body">
+                    <p>{responsesByStage.kifleketema_second[0].response}</p>
+                  </div>
+                  {complaint.currentStage === "kifleketema_second" && hasResponseForCurrentStage(complaint) && (
+                    <div className="response-actions">
+                      <button onClick={handleAcceptResponse} className="btn btn-resolve">
+                        Resolve Complaint
+                      </button>
+                      <button onClick={handleEscalate} className="btn btn-escalate">
+                        Escalate to Kentiba Biro
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="no-response">No response received yet.</p>
+              )}
+            </div>
+          )}
+
+          {/* Kentiba Stage */}
+          {(complaint.currentStage === "kentiba" || responsesByStage.kentiba.length > 0) && (
+            <div className="stage-response-section">
+              <h3 className="stage-title">Kentiba Biro</h3>
+              {responsesByStage.kentiba && responsesByStage.kentiba.length > 0 ? (
+                <div className="response-card">
+                  <div className="response-header">
+                    <div className="response-info">
+                      <span className="response-from">
+                        From:{" "}
+                        {responsesByStage.kentiba[0].responder
+                          ? `${responsesByStage.kentiba[0].responder.firstName} ${responsesByStage.kentiba[0].responder.lastName}`
+                          : getHandlerLabel(responsesByStage.kentiba[0].responderRole)}
+                      </span>
+                      <span className="response-date">{formatDate(responsesByStage.kentiba[0].createdAt)}</span>
+                    </div>
+                    <span className={getStatusBadgeClass(responsesByStage.kentiba[0].status)}>
+                      {responsesByStage.kentiba[0].status.replace("_", " ")}
+                    </span>
+                  </div>
+                  <div className="response-body">
+                    <p>{responsesByStage.kentiba[0].response}</p>
+                  </div>
+                  {complaint.currentStage === "kentiba" && hasResponseForCurrentStage(complaint) && (
+                    <div className="response-actions">
+                      <button onClick={handleAcceptResponse} className="btn btn-resolve">
+                        Resolve Complaint
                       </button>
                     </div>
                   )}

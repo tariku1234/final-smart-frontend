@@ -21,6 +21,7 @@ const AdminRegister = () => {
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [success, setSuccess] = useState(null)
   const navigate = useNavigate()
 
   const { firstName, lastName, email, phone, password, confirmPassword, idNumber, address, role, adminCode } = formData
@@ -71,16 +72,36 @@ const AdminRegister = () => {
         }),
       })
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.message || `Server responded with status: ${response.status}`)
-      }
+      const data = await response.json()
 
-      // Successfully registered, navigate to login
-      navigate("/login")
+      if (response.ok) {
+        // Set success message
+        setSuccess(data.message || "Registration successful!")
+
+        // Reset form
+        setFormData({
+          firstName: "",
+          lastName: "",
+          email: "",
+          phone: "",
+          password: "",
+          confirmPassword: "",
+          idNumber: "",
+          address: "",
+          role: "wereda_anti_corruption",
+          adminCode: "",
+        })
+
+        // Navigate to login after 3 seconds
+        setTimeout(() => {
+          navigate("/login")
+        }, 3000)
+      } else {
+        setError(data.message || "Registration failed")
+      }
     } catch (err) {
       console.error("Registration error:", err)
-      setError(`Registration failed: ${err.message}`)
+      setError("Failed to connect to the server")
     } finally {
       setLoading(false)
     }
@@ -92,6 +113,7 @@ const AdminRegister = () => {
         <h2 className="form-title">Register as Administrator</h2>
 
         {error && <div className="alert alert-danger">{error}</div>}
+        {success && <div className="alert alert-success">{success}</div>}
 
         <form onSubmit={handleSubmit}>
           <div className="form-row">
@@ -108,6 +130,7 @@ const AdminRegister = () => {
                 className="form-input"
                 placeholder="Enter your first name"
                 required
+                disabled={loading || success}
               />
             </div>
 
@@ -124,6 +147,7 @@ const AdminRegister = () => {
                 className="form-input"
                 placeholder="Enter your last name"
                 required
+                disabled={loading || success}
               />
             </div>
           </div>
@@ -142,6 +166,7 @@ const AdminRegister = () => {
                 className="form-input"
                 placeholder="Enter your email"
                 required
+                disabled={loading || success}
               />
             </div>
 
@@ -158,6 +183,7 @@ const AdminRegister = () => {
                 className="form-input"
                 placeholder="Enter your phone number"
                 required
+                disabled={loading || success}
               />
             </div>
           </div>
@@ -175,6 +201,7 @@ const AdminRegister = () => {
               className="form-input"
               placeholder="Enter your ID number"
               required
+              disabled={loading || success}
             />
           </div>
 
@@ -191,6 +218,7 @@ const AdminRegister = () => {
               className="form-input"
               placeholder="Enter your address"
               required
+              disabled={loading || success}
             />
           </div>
 
@@ -198,7 +226,15 @@ const AdminRegister = () => {
             <label htmlFor="role" className="form-label">
               Administrator Role
             </label>
-            <select id="role" name="role" value={role} onChange={handleChange} className="form-select" required>
+            <select
+              id="role"
+              name="role"
+              value={role}
+              onChange={handleChange}
+              className="form-select"
+              required
+              disabled={loading || success}
+            >
               <option value="wereda_anti_corruption">Wereda Anti-Corruption Officer</option>
               <option value="kifleketema_anti_corruption">Kifleketema Anti-Corruption Officer</option>
               <option value="kentiba_biro">Kentiba Biro</option>
@@ -219,6 +255,7 @@ const AdminRegister = () => {
                 className="form-input"
                 placeholder="Enter your password"
                 required
+                disabled={loading || success}
               />
             </div>
 
@@ -235,6 +272,7 @@ const AdminRegister = () => {
                 className="form-input"
                 placeholder="Confirm your password"
                 required
+                disabled={loading || success}
               />
             </div>
           </div>
@@ -252,13 +290,14 @@ const AdminRegister = () => {
               className="form-input"
               placeholder="Enter the administrator registration code"
               required
+              disabled={loading || success}
             />
             <small className="form-text">
               This code is provided by the system administrator to authorize admin registrations.
             </small>
           </div>
 
-          <button type="submit" className="form-button" disabled={loading}>
+          <button type="submit" className="form-button" disabled={loading || success}>
             {loading ? "Registering..." : "Register as Administrator"}
           </button>
         </form>

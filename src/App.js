@@ -18,6 +18,9 @@ import SafetyAlerts from "./routes/SafetyAlerts"
 import OfficeAvailability from "./routes/OfficeAvailability"
 import NotFound from "./routes/NotFound"
 import PrivateRoute from "./components/PrivateRoute"
+import ForgotPassword from "./routes/ForgotPassword"
+import AdminApproval from "./routes/AdminApproval"
+import AdminStatistics from "./routes/AdminStatistics"
 import "./App.css"
 
 function App() {
@@ -92,6 +95,23 @@ function App() {
                     ]}
                   >
                     <AdminResponseForm />
+                  </PrivateRoute>
+                }
+              />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route
+                path="/admin/approve-admins"
+                element={
+                  <PrivateRoute allowedRoles={["kentiba_biro"]}>
+                    <AdminApproval />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/admin/statistics"
+                element={
+                  <PrivateRoute allowedRoles={["kentiba_biro"]}>
+                    <AdminStatistics />
                   </PrivateRoute>
                 }
               />

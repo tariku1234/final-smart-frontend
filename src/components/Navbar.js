@@ -90,6 +90,16 @@ const Navbar = () => {
                       Approve Stakeholders
                     </Link>
                   </li>
+                  <li className="navbar-item">
+                    <Link to="/admin/approve-admins" className="navbar-link">
+                      Approve Administrators
+                    </Link>
+                  </li>
+                  <li className="navbar-item">
+                    <Link to="/admin/statistics" className="navbar-link">
+                      User Statistics
+                    </Link>
+                  </li>
                 </>
               )}
               <li className="navbar-item">
