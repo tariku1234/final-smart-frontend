@@ -19,6 +19,8 @@ const StakeholderRegister = () => {
     officeType: "trade_office",
     officeAddress: "",
     officePhone: "",
+    kifleketema: "",
+    wereda: "",
   })
 
   const [loading, setLoading] = useState(false)
@@ -39,10 +41,54 @@ const StakeholderRegister = () => {
     officeType,
     officeAddress,
     officePhone,
+    kifleketema,
+    wereda,
   } = formData
 
+  // Kifleketema options
+  const kifleketemaOptions = [
+    "Lemi Kura",
+    "Arada",
+    "Addis Ketema",
+    "Lideta",
+    "Kirkos",
+    "Yeka",
+    "Bole",
+    "Akaky Kaliti",
+    "Nifas Silk-Lafto",
+    "Kolfe Keranio",
+    "Gulele",
+  ]
+
+  // Wereda options based on selected Kifleketema
+  const getWeredaOptions = (selectedKifleketema) => {
+    const weredaMap = {
+      "Lemi Kura": Array.from({ length: 10 }, (_, i) => `Wereda ${i + 1}`),
+      Arada: Array.from({ length: 8 }, (_, i) => `Wereda ${i + 1}`),
+      "Addis Ketema": Array.from({ length: 12 }, (_, i) => `Wereda ${i + 1}`),
+      Lideta: Array.from({ length: 10 }, (_, i) => `Wereda ${i + 1}`),
+      Kirkos: Array.from({ length: 10 }, (_, i) => `Wereda ${i + 1}`),
+      Yeka: Array.from({ length: 12 }, (_, i) => `Wereda ${i + 1}`),
+      Bole: Array.from({ length: 11 }, (_, i) => `Wereda ${i + 1}`),
+      "Akaky Kaliti": Array.from({ length: 13 }, (_, i) => `Wereda ${i + 1}`),
+      "Nifas Silk-Lafto": Array.from({ length: 13 }, (_, i) => `Wereda ${i + 1}`),
+      "Kolfe Keranio": Array.from({ length: 11 }, (_, i) => `Wereda ${i + 1}`),
+      Gulele: Array.from({ length: 10 }, (_, i) => `Wereda ${i + 1}`),
+    }
+
+    return selectedKifleketema ? weredaMap[selectedKifleketema] || [] : []
+  }
+
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value })
+    const { name, value } = e.target
+
+    // If kifleketema changes, reset wereda
+    if (name === "kifleketema") {
+      setFormData((prev) => ({ ...prev, [name]: value, wereda: "" }))
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }))
+    }
+
     // Clear error when user starts typing
     if (error) setError(null)
   }
@@ -61,9 +107,35 @@ const StakeholderRegister = () => {
       return
     }
 
+    if (!kifleketema) {
+      setError("Please select a Kifleketema")
+      return
+    }
+
+    if (!wereda) {
+      setError("Please select a Wereda")
+      return
+    }
+
     setLoading(true)
 
     try {
+      console.log("Submitting stakeholder data:", {
+        firstName,
+        lastName,
+        email,
+        phone,
+        password: "********", // Don't log actual password
+        idNumber,
+        address,
+        officeName,
+        officeType,
+        officeAddress,
+        officePhone,
+        kifleketema,
+        wereda,
+      })
+
       const response = await fetch(`${API_URL}/api/stakeholders/register`, {
         method: "POST",
         headers: {
@@ -81,6 +153,8 @@ const StakeholderRegister = () => {
           officeType,
           officeAddress,
           officePhone,
+          kifleketema,
+          wereda,
         }),
       })
 
@@ -101,6 +175,8 @@ const StakeholderRegister = () => {
           officeType: "trade_office",
           officeAddress: "",
           officePhone: "",
+          kifleketema: "",
+          wereda: "",
         })
 
         // Redirect after 5 seconds
@@ -323,6 +399,52 @@ const StakeholderRegister = () => {
                 required
                 disabled={success}
               />
+            </div>
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label htmlFor="kifleketema" className="form-label">
+                Kifleketema (Sub-City)
+              </label>
+              <select
+                id="kifleketema"
+                name="kifleketema"
+                value={kifleketema}
+                onChange={handleChange}
+                className="form-select"
+                required
+                disabled={success}
+              >
+                <option value="">Select Kifleketema</option>
+                {kifleketemaOptions.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="wereda" className="form-label">
+                Wereda
+              </label>
+              <select
+                id="wereda"
+                name="wereda"
+                value={wereda}
+                onChange={handleChange}
+                className="form-select"
+                required
+                disabled={success || !kifleketema}
+              >
+                <option value="">Select Wereda</option>
+                {getWeredaOptions(kifleketema).map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 

@@ -18,9 +18,11 @@ const ComplaintForm = () => {
   const [formData, setFormData] = useState({
     title: "",
     description: "",
-    stakeholderOfficeId: "",
+    officeType: "",
     location: "",
     attachments: [],
+    kifleketema: "",
+    wereda: "",
   })
 
   const [secondStageData, setSecondStageData] = useState({
@@ -35,9 +37,45 @@ const ComplaintForm = () => {
   const [fetchingOriginalComplaint, setFetchingOriginalComplaint] = useState(isSecondStage)
   const [error, setError] = useState(null)
   const [success, setSuccess] = useState(false)
+  const [availableOfficeTypes, setAvailableOfficeTypes] = useState([])
+  const [availableLocations, setAvailableLocations] = useState({})
 
-  const { title, description, stakeholderOfficeId, location } = formData
+  const { title, description, officeType, location, kifleketema, wereda } = formData
   const { additionalDetails } = secondStageData
+
+  // Kifleketema options
+  const kifleketemaOptions = [
+    "Lemi Kura",
+    "Arada",
+    "Addis Ketema",
+    "Lideta",
+    "Kirkos",
+    "Yeka",
+    "Bole",
+    "Akaky Kaliti",
+    "Nifas Silk-Lafto",
+    "Kolfe Keranio",
+    "Gulele",
+  ]
+
+  // Wereda options based on selected Kifleketema
+  const getWeredaOptions = (selectedKifleketema) => {
+    const weredaMap = {
+      "Lemi Kura": Array.from({ length: 10 }, (_, i) => `Wereda ${i + 1}`),
+      Arada: Array.from({ length: 8 }, (_, i) => `Wereda ${i + 1}`),
+      "Addis Ketema": Array.from({ length: 12 }, (_, i) => `Wereda ${i + 1}`),
+      Lideta: Array.from({ length: 10 }, (_, i) => `Wereda ${i + 1}`),
+      Kirkos: Array.from({ length: 10 }, (_, i) => `Wereda ${i + 1}`),
+      Yeka: Array.from({ length: 12 }, (_, i) => `Wereda ${i + 1}`),
+      Bole: Array.from({ length: 11 }, (_, i) => `Wereda ${i + 1}`),
+      "Akaky Kaliti": Array.from({ length: 13 }, (_, i) => `Wereda ${i + 1}`),
+      "Nifas Silk-Lafto": Array.from({ length: 13 }, (_, i) => `Wereda ${i + 1}`),
+      "Kolfe Keranio": Array.from({ length: 11 }, (_, i) => `Wereda ${i + 1}`),
+      Gulele: Array.from({ length: 10 }, (_, i) => `Wereda ${i + 1}`),
+    }
+
+    return selectedKifleketema ? weredaMap[selectedKifleketema] || [] : []
+  }
 
   // Fetch approved stakeholder offices
   useEffect(() => {
@@ -47,7 +85,35 @@ const ComplaintForm = () => {
         const data = await response.json()
 
         if (response.ok) {
+          console.log("Fetched stakeholder offices:", data.stakeholders)
           setStakeholderOffices(data.stakeholders)
+
+          // Process available office types and locations
+          const officeTypes = [...new Set(data.stakeholders.map((office) => office.officeType))]
+          setAvailableOfficeTypes(officeTypes)
+
+          // Create a map of available locations for each office type
+          const locationMap = {}
+          officeTypes.forEach((type) => {
+            locationMap[type] = {}
+
+            // Get all offices of this type
+            const officesOfType = data.stakeholders.filter((office) => office.officeType === type)
+
+            // Group by kifleketema and wereda
+            officesOfType.forEach((office) => {
+              if (office.kifleketema && office.wereda) {
+                if (!locationMap[type][office.kifleketema]) {
+                  locationMap[type][office.kifleketema] = []
+                }
+                if (!locationMap[type][office.kifleketema].includes(office.wereda)) {
+                  locationMap[type][office.kifleketema].push(office.wereda)
+                }
+              }
+            })
+          })
+
+          setAvailableLocations(locationMap)
         } else {
           setError("Failed to fetch stakeholder offices")
         }
@@ -90,8 +156,11 @@ const ComplaintForm = () => {
             setFormData((prevData) => ({
               ...prevData,
               title: `Follow-up: ${data.complaint.title}`,
-              stakeholderOfficeId: data.complaint.stakeholderOffice._id,
+              description: "", // Ensure description is empty to be filled by user
+              officeType: data.complaint.stakeholderOffice.officeType,
               location: data.complaint.location,
+              kifleketema: data.complaint.kifleketema,
+              wereda: data.complaint.wereda,
             }))
           } else {
             setError(
@@ -123,7 +192,19 @@ const ComplaintForm = () => {
   }, [user, navigate])
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value })
+    const { name, value } = e.target
+
+    // If office type changes, reset kifleketema and wereda
+    if (name === "officeType") {
+      setFormData((prev) => ({ ...prev, [name]: value, kifleketema: "", wereda: "" }))
+    }
+    // If kifleketema changes, reset wereda
+    else if (name === "kifleketema") {
+      setFormData((prev) => ({ ...prev, [name]: value, wereda: "" }))
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }))
+    }
+
     // Clear error when user starts typing
     if (error) setError(null)
   }
@@ -145,15 +226,21 @@ const ComplaintForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault()
 
-    if (!title || !description || !stakeholderOfficeId || !location) {
-      setError("Please fill in all required fields")
-      return
-    }
-
-    // For second stage, also validate additional details
-    if (isSecondStage && !additionalDetails) {
-      setError("Please provide additional details for the second stage")
-      return
+    // Validate form fields
+    if (isSecondStage) {
+      // For second stage, validate title, description, and additionalDetails
+      if (!title || !description || !additionalDetails) {
+        console.log("Second stage validation failed:", { title, description, additionalDetails })
+        setError("Please fill in all required fields")
+        return
+      }
+    } else {
+      // For first stage, validate all fields
+      if (!title || !description || !officeType || !location || !kifleketema || !wereda) {
+        console.log("First stage validation failed:", { title, description, officeType, location, kifleketema, wereda })
+        setError("Please fill in all required fields")
+        return
+      }
     }
 
     setLoading(true)
@@ -162,12 +249,75 @@ const ComplaintForm = () => {
     try {
       const token = localStorage.getItem("token")
 
+      // Debug: Log all stakeholder offices to see what's available
+      console.log("All stakeholder offices:", stakeholderOffices)
+      console.log("Looking for office with type:", officeType, "in", kifleketema, wereda)
+
+      // Find the appropriate stakeholder office based on officeType, kifleketema, and wereda
+      let stakeholderOfficeId
+
+      if (isSecondStage) {
+        // For second stage, use the original complaint's stakeholder office
+        stakeholderOfficeId = originalComplaint.stakeholderOffice._id
+        console.log("Using original complaint's stakeholder office:", stakeholderOfficeId)
+      } else {
+        // For first stage, find the matching office
+        const matchingOffice = stakeholderOffices.find((office) => {
+          // Debug: Log each office being checked
+          console.log(
+            "Checking office:",
+            office.officeName,
+            "Type:",
+            office.officeType,
+            "Kifleketema:",
+            office.kifleketema,
+            "Wereda:",
+            office.wereda,
+          )
+
+          // More flexible matching (case-insensitive)
+          return (
+            office.officeType.toLowerCase() === officeType.toLowerCase() &&
+            office.kifleketema?.toLowerCase() === kifleketema.toLowerCase() &&
+            office.wereda?.toLowerCase() === wereda.toLowerCase()
+          )
+        })
+
+        // Debug: Log the result of the matching
+        console.log("Matching office found:", matchingOffice)
+
+        // If no matching office is found, show error
+        if (!matchingOffice) {
+          // First, check if any office of this type exists at all
+          const anyOfficeOfType = stakeholderOffices.find(
+            (office) => office.officeType.toLowerCase() === officeType.toLowerCase(),
+          )
+
+          if (anyOfficeOfType) {
+            setError(
+              `No ${officeType.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())} found in ${kifleketema}, ${wereda}. Please select a different location.`,
+            )
+          } else {
+            setError(
+              `No ${officeType.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())} offices are currently registered in the system.`,
+            )
+          }
+
+          setLoading(false)
+          return
+        }
+
+        stakeholderOfficeId = matchingOffice._id
+      }
+
       // Create form data for file uploads
       const formDataObj = new FormData()
       formDataObj.append("title", title)
       formDataObj.append("description", description)
       formDataObj.append("stakeholderOfficeId", stakeholderOfficeId)
-      formDataObj.append("location", location)
+      formDataObj.append("location", location || (originalComplaint ? originalComplaint.location : ""))
+      formDataObj.append("kifleketema", kifleketema || (originalComplaint ? originalComplaint.kifleketema : ""))
+      formDataObj.append("wereda", wereda || (originalComplaint ? originalComplaint.wereda : ""))
 
       // If this is a second stage submission, add the original complaint ID
       if (isSecondStage && complaintId) {
@@ -177,18 +327,30 @@ const ComplaintForm = () => {
       }
 
       // Append files if any
-      if (formData.attachments.length > 0) {
+      if (formData.attachments && formData.attachments.length > 0) {
         for (let i = 0; i < formData.attachments.length; i++) {
           formDataObj.append("attachments", formData.attachments[i])
         }
       }
 
       // Append second stage files if any
-      if (isSecondStage && secondStageData.attachments.length > 0) {
+      if (isSecondStage && secondStageData.attachments && secondStageData.attachments.length > 0) {
         for (let i = 0; i < secondStageData.attachments.length; i++) {
           formDataObj.append("attachments", secondStageData.attachments[i])
         }
       }
+
+      console.log("Submitting complaint with data:", {
+        title,
+        description,
+        stakeholderOfficeId,
+        location: location || (originalComplaint ? originalComplaint.location : ""),
+        kifleketema: kifleketema || (originalComplaint ? originalComplaint.kifleketema : ""),
+        wereda: wereda || (originalComplaint ? originalComplaint.wereda : ""),
+        isSecondStage: isSecondStage ? "true" : "false",
+        originalComplaintId: complaintId || "",
+        additionalDetails: additionalDetails || "",
+      })
 
       const response = await fetch(`${API_URL}/api/complaints`, {
         method: "POST",
@@ -210,9 +372,11 @@ const ComplaintForm = () => {
       setFormData({
         title: "",
         description: "",
-        stakeholderOfficeId: "",
+        officeType: "",
         location: "",
         attachments: [],
+        kifleketema: "",
+        wereda: "",
       })
 
       setSecondStageData({
@@ -230,6 +394,24 @@ const ComplaintForm = () => {
     } finally {
       setLoading(false)
     }
+  }
+
+  // Get available weredas for the selected office type and kifleketema
+  const getAvailableWeredas = () => {
+    if (!officeType || !kifleketema || !availableLocations[officeType]) {
+      return []
+    }
+
+    return availableLocations[officeType][kifleketema] || []
+  }
+
+  // Get available kifleketemas for the selected office type
+  const getAvailableKifleketemas = () => {
+    if (!officeType || !availableLocations[officeType]) {
+      return []
+    }
+
+    return Object.keys(availableLocations[officeType])
   }
 
   if (!user) {
@@ -283,6 +465,14 @@ const ComplaintForm = () => {
                   <span className="summary-label">Office:</span>
                   <span className="summary-value">{originalComplaint.stakeholderOffice.officeName}</span>
                 </div>
+                <div className="summary-item">
+                  <span className="summary-label">Kifleketema:</span>
+                  <span className="summary-value">{originalComplaint.kifleketema}</span>
+                </div>
+                <div className="summary-item">
+                  <span className="summary-label">Wereda:</span>
+                  <span className="summary-value">{originalComplaint.wereda}</span>
+                </div>
               </div>
             )}
 
@@ -319,50 +509,106 @@ const ComplaintForm = () => {
               ></textarea>
             </div>
 
-            <div className="form-group">
-              <label htmlFor="stakeholderOfficeId" className="form-label">
-                Stakeholder Office
-              </label>
-              <select
-                id="stakeholderOfficeId"
-                name="stakeholderOfficeId"
-                value={stakeholderOfficeId}
-                onChange={handleChange}
-                className="form-select"
-                required
-                disabled={loading || success || isSecondStage}
-              >
-                <option value="">Select a Stakeholder Office</option>
-                {stakeholderOffices.map((office) => (
-                  <option key={office._id} value={office._id}>
-                    {office.officeName} ({office.officeType.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
-                    )
-                  </option>
-                ))}
-              </select>
-              {stakeholderOffices.length === 0 && (
-                <small className="form-text text-warning">
-                  No approved stakeholder offices found. Please try again later.
-                </small>
-              )}
-            </div>
+            {!isSecondStage && (
+              <>
+                <div className="form-group">
+                  <label htmlFor="officeType" className="form-label">
+                    Office Type
+                  </label>
+                  <select
+                    id="officeType"
+                    name="officeType"
+                    value={officeType}
+                    onChange={handleChange}
+                    className="form-select"
+                    required
+                    disabled={loading || success}
+                  >
+                    <option value="">Select Office Type</option>
+                    {/* Get unique office types from available stakeholder offices */}
+                    {availableOfficeTypes.map((type) => (
+                      <option key={type} value={type}>
+                        {type.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
+                      </option>
+                    ))}
+                  </select>
+                  {stakeholderOffices.length === 0 && (
+                    <small className="form-text text-warning">
+                      No approved stakeholder offices found. Please try again later.
+                    </small>
+                  )}
+                </div>
 
-            <div className="form-group">
-              <label htmlFor="location" className="form-label">
-                Location
-              </label>
-              <input
-                type="text"
-                id="location"
-                name="location"
-                value={location}
-                onChange={handleChange}
-                className="form-input"
-                placeholder="Enter the location related to the complaint"
-                required
-                disabled={loading || success || isSecondStage}
-              />
-            </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label htmlFor="kifleketema" className="form-label">
+                      Kifleketema (Sub-City)
+                    </label>
+                    <select
+                      id="kifleketema"
+                      name="kifleketema"
+                      value={kifleketema}
+                      onChange={handleChange}
+                      className="form-select"
+                      required
+                      disabled={loading || success || !officeType}
+                    >
+                      <option value="">Select Kifleketema</option>
+                      {getAvailableKifleketemas().map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                    {officeType && getAvailableKifleketemas().length === 0 && (
+                      <small className="form-text text-warning">No locations available for this office type.</small>
+                    )}
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="wereda" className="form-label">
+                      Wereda
+                    </label>
+                    <select
+                      id="wereda"
+                      name="wereda"
+                      value={wereda}
+                      onChange={handleChange}
+                      className="form-select"
+                      required
+                      disabled={loading || success || !kifleketema}
+                    >
+                      <option value="">Select Wereda</option>
+                      {getAvailableWeredas().map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                    {kifleketema && getAvailableWeredas().length === 0 && (
+                      <small className="form-text text-warning">No Weredas available for this Kifleketema.</small>
+                    )}
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="location" className="form-label">
+                    Location
+                  </label>
+                  <input
+                    type="text"
+                    id="location"
+                    name="location"
+                    value={location}
+                    onChange={handleChange}
+                    className="form-input"
+                    placeholder="Enter the location related to the complaint"
+                    required
+                    disabled={loading || success}
+                  />
+                </div>
+              </>
+            )}
 
             <div className="form-group">
               <label htmlFor="attachments" className="form-label">
@@ -424,7 +670,7 @@ const ComplaintForm = () => {
             <button
               type="submit"
               className="form-button"
-              disabled={loading || success || stakeholderOffices.length === 0}
+              disabled={loading || success || (!isSecondStage && stakeholderOffices.length === 0)}
             >
               {loading ? "Submitting..." : isSecondStage ? "Submit Second Stage Complaint" : "Submit Complaint"}
             </button>

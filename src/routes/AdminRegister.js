@@ -17,6 +17,8 @@ const AdminRegister = () => {
     address: "",
     role: "wereda_anti_corruption", // Default role
     adminCode: "", // Special code for admin registration
+    kifleketema: "",
+    wereda: "",
   })
 
   const [loading, setLoading] = useState(false)
@@ -24,10 +26,75 @@ const AdminRegister = () => {
   const [success, setSuccess] = useState(null)
   const navigate = useNavigate()
 
-  const { firstName, lastName, email, phone, password, confirmPassword, idNumber, address, role, adminCode } = formData
+  const {
+    firstName,
+    lastName,
+    email,
+    phone,
+    password,
+    confirmPassword,
+    idNumber,
+    address,
+    role,
+    adminCode,
+    kifleketema,
+    wereda,
+  } = formData
+
+  // Kifleketema options
+  const kifleketemaOptions = [
+    "Lemi Kura",
+    "Arada",
+    "Addis Ketema",
+    "Lideta",
+    "Kirkos",
+    "Yeka",
+    "Bole",
+    "Akaky Kaliti",
+    "Nifas Silk-Lafto",
+    "Kolfe Keranio",
+    "Gulele",
+  ]
+
+  // Wereda options based on selected Kifleketema
+  const getWeredaOptions = (selectedKifleketema) => {
+    const weredaMap = {
+      "Lemi Kura": Array.from({ length: 10 }, (_, i) => `Wereda ${i + 1}`),
+      Arada: Array.from({ length: 8 }, (_, i) => `Wereda ${i + 1}`),
+      "Addis Ketema": Array.from({ length: 12 }, (_, i) => `Wereda ${i + 1}`),
+      Lideta: Array.from({ length: 10 }, (_, i) => `Wereda ${i + 1}`),
+      Kirkos: Array.from({ length: 10 }, (_, i) => `Wereda ${i + 1}`),
+      Yeka: Array.from({ length: 12 }, (_, i) => `Wereda ${i + 1}`),
+      Bole: Array.from({ length: 11 }, (_, i) => `Wereda ${i + 1}`),
+      "Akaky Kaliti": Array.from({ length: 13 }, (_, i) => `Wereda ${i + 1}`),
+      "Nifas Silk-Lafto": Array.from({ length: 13 }, (_, i) => `Wereda ${i + 1}`),
+      "Kolfe Keranio": Array.from({ length: 11 }, (_, i) => `Wereda ${i + 1}`),
+      Gulele: Array.from({ length: 10 }, (_, i) => `Wereda ${i + 1}`),
+    }
+
+    return selectedKifleketema ? weredaMap[selectedKifleketema] || [] : []
+  }
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value })
+    const { name, value } = e.target
+
+    // If kifleketema changes, reset wereda
+    if (name === "kifleketema") {
+      setFormData((prev) => ({ ...prev, [name]: value, wereda: "" }))
+    } else if (name === "role") {
+      // If role changes to kifleketema_anti_corruption, reset wereda
+      // If role changes to kentiba_biro, reset both kifleketema and wereda
+      if (value === "kifleketema_anti_corruption") {
+        setFormData((prev) => ({ ...prev, [name]: value, wereda: "" }))
+      } else if (value === "kentiba_biro") {
+        setFormData((prev) => ({ ...prev, [name]: value, kifleketema: "", wereda: "" }))
+      } else {
+        setFormData((prev) => ({ ...prev, [name]: value }))
+      }
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }))
+    }
+
     // Clear error when user starts typing
     if (error) setError(null)
   }
@@ -51,6 +118,23 @@ const AdminRegister = () => {
       return
     }
 
+    // Validate Kifleketema and Wereda based on role
+    if (role === "wereda_anti_corruption") {
+      if (!kifleketema) {
+        setError("Please select a Kifleketema")
+        return
+      }
+      if (!wereda) {
+        setError("Please select a Wereda")
+        return
+      }
+    } else if (role === "kifleketema_anti_corruption") {
+      if (!kifleketema) {
+        setError("Please select a Kifleketema")
+        return
+      }
+    }
+
     setLoading(true)
 
     try {
@@ -69,6 +153,8 @@ const AdminRegister = () => {
           address,
           role,
           adminCode,
+          kifleketema,
+          wereda,
         }),
       })
 
@@ -90,6 +176,8 @@ const AdminRegister = () => {
           address: "",
           role: "wereda_anti_corruption",
           adminCode: "",
+          kifleketema: "",
+          wereda: "",
         })
 
         // Navigate to login after 3 seconds
@@ -240,6 +328,56 @@ const AdminRegister = () => {
               <option value="kentiba_biro">Kentiba Biro</option>
             </select>
           </div>
+
+          {/* Kifleketema selection - show for Wereda and Kifleketema roles */}
+          {(role === "wereda_anti_corruption" || role === "kifleketema_anti_corruption") && (
+            <div className="form-group">
+              <label htmlFor="kifleketema" className="form-label">
+                Kifleketema (Sub-City)
+              </label>
+              <select
+                id="kifleketema"
+                name="kifleketema"
+                value={kifleketema}
+                onChange={handleChange}
+                className="form-select"
+                required
+                disabled={loading || success}
+              >
+                <option value="">Select Kifleketema</option>
+                {kifleketemaOptions.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Wereda selection - only show for Wereda role */}
+          {role === "wereda_anti_corruption" && kifleketema && (
+            <div className="form-group">
+              <label htmlFor="wereda" className="form-label">
+                Wereda
+              </label>
+              <select
+                id="wereda"
+                name="wereda"
+                value={wereda}
+                onChange={handleChange}
+                className="form-select"
+                required
+                disabled={loading || success}
+              >
+                <option value="">Select Wereda</option>
+                {getWeredaOptions(kifleketema).map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div className="form-row">
             <div className="form-group">

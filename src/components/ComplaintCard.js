@@ -60,7 +60,7 @@ const ComplaintCard = ({ complaint }) => {
     if (!description) return "No description provided"
     return description.length > 150 ? `${description.substring(0, 150)}...` : description
   }
-
+  
   return (
     <div className="complaint-card">
       <div className="complaint-header">
@@ -73,10 +73,28 @@ const ComplaintCard = ({ complaint }) => {
           <span className="complaint-date">Submitted: {formatDate(complaint.submittedAt || complaint.createdAt)}</span>
           <span className="complaint-stage">Stage: {getStageLabel(complaint.currentStage)}</span>
         </div>
+
+        {complaint.kifleketema && complaint.wereda && (
+          <div className="complaint-location-info">
+            <span className="complaint-kifleketema">Kifleketema: {complaint.kifleketema}</span>
+            <span className="complaint-wereda">Wereda: {complaint.wereda}</span>
+          </div>
+        )}
+
         {complaint.responses && complaint.responses.length > 0 && (
-          <div className="response-indicator">
-            <span className="response-count">{complaint.responses.length} response(s)</span>
-            <span className="citizen-action-needed">Waiting for citizen decision</span>
+          <div className="complaint-response">
+            <p>
+              <strong>Latest Response:</strong>{" "}
+              {complaint.responses[complaint.responses.length - 1].response.length > 100
+                ? `${complaint.responses[complaint.responses.length - 1].response.substring(0, 100)}...`
+                : complaint.responses[complaint.responses.length - 1].response}
+            </p>
+          </div>
+        )}
+
+        {complaint.responses && complaint.responses.length > 0 && complaint.status !== "resolved" && (
+          <div className="response-action-needed">
+            <p>You have a response waiting for your decision!</p>
           </div>
         )}
       </div>

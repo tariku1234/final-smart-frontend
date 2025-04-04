@@ -169,6 +169,8 @@ const AdminApproval = () => {
                 <th>Email</th>
                 <th>Phone</th>
                 <th>Role</th>
+                <th>Kifleketema</th>
+                <th>Wereda</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -183,6 +185,8 @@ const AdminApproval = () => {
                       ? "Wereda Anti-Corruption Officer"
                       : "Kifleketema Anti-Corruption Officer"}
                   </td>
+                  <td>{admin.kifleketema || "Not specified"}</td>
+                  <td>{admin.wereda || "Not applicable"}</td>
                   <td>
                     <div className="action-buttons">
                       <button onClick={() => handleApprove(admin._id)} className="btn btn-success btn-sm">

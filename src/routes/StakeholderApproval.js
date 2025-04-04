@@ -152,7 +152,7 @@ const StakeholderApproval = () => {
       const data = await response.json()
 
       if (response.ok) {
-        // Remove the stakeholder from the list
+        // Remove the rejected stakeholder from the list
         setStakeholders(stakeholders.filter((stakeholder) => stakeholder._id !== rejectionData.stakeholderId))
         closeRejectionModal()
       } else {
@@ -196,6 +196,8 @@ const StakeholderApproval = () => {
               <tr>
                 <th>Office Name</th>
                 <th>Office Type</th>
+                <th>Kifleketema</th>
+                <th>Wereda</th>
                 <th>Contact Person</th>
                 <th>Email</th>
                 <th>Phone</th>
@@ -208,6 +210,8 @@ const StakeholderApproval = () => {
                 <tr key={stakeholder._id}>
                   <td>{stakeholder.officeName}</td>
                   <td>{stakeholder.officeType.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}</td>
+                  <td>{stakeholder.kifleketema || "Not specified"}</td>
+                  <td>{stakeholder.wereda || "Not specified"}</td>
                   <td>{`${stakeholder.firstName} ${stakeholder.lastName}`}</td>
                   <td>{stakeholder.email}</td>
                   <td>{stakeholder.phone}</td>

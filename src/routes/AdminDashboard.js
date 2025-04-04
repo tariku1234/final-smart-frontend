@@ -22,14 +22,21 @@ const AdminDashboard = () => {
     resolved: 0,
     escalated: 0,
   })
+  const [adminInfo, setAdminInfo] = useState(null)
 
   // Performance stats for Kentiba Biro
   const [performanceStats, setPerformanceStats] = useState({
     stakeholderOffices: [],
     weredaAdmins: [],
     kifleketemaAdmins: [],
+    byLocation: {
+      stakeholderOffices: {},
+      weredaAdmins: {},
+      kifleketemaAdmins: {},
+    },
   })
   const [loadingPerformance, setLoadingPerformance] = useState(false)
+  const [selectedKifleketema, setSelectedKifleketema] = useState("all")
 
   // Redirect if not logged in or not an admin
   useEffect(() => {
@@ -42,6 +49,27 @@ const AdminDashboard = () => {
       navigate("/")
       return
     }
+
+    // Fetch admin info to get kifleketema and wereda
+    const fetchAdminInfo = async () => {
+      try {
+        const token = localStorage.getItem("token")
+        const response = await fetch(`${API_URL}/api/auth/me`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          setAdminInfo(data.user)
+        }
+      } catch (err) {
+        console.error("Error fetching admin info:", err)
+      }
+    }
+
+    fetchAdminInfo()
   }, [user, navigate])
 
   // Fetch complaints based on admin role
@@ -158,6 +186,10 @@ const AdminDashboard = () => {
     setLoading(true)
   }
 
+  const handleKifleketemaFilterChange = (e) => {
+    setSelectedKifleketema(e.target.value)
+  }
+
   const getRoleName = (role) => {
     switch (role) {
       case USER_ROLES.STAKEHOLDER_OFFICE:
@@ -173,13 +205,99 @@ const AdminDashboard = () => {
     }
   }
 
+  // Get all available kifleketemas from performance stats
+  const getAvailableKifleketemas = () => {
+    const kifleketemas = new Set()
+
+    if (performanceStats.byLocation) {
+      // Add kifleketemas from stakeholder offices
+      if (performanceStats.byLocation.stakeholderOffices) {
+        Object.keys(performanceStats.byLocation.stakeholderOffices).forEach((k) => kifleketemas.add(k))
+      }
+
+      // Add kifleketemas from wereda admins
+      if (performanceStats.byLocation.weredaAdmins) {
+        Object.keys(performanceStats.byLocation.weredaAdmins).forEach((k) => kifleketemas.add(k))
+      }
+
+      // Add kifleketemas from kifleketema admins
+      if (performanceStats.byLocation.kifleketemaAdmins) {
+        Object.keys(performanceStats.byLocation.kifleketemaAdmins).forEach((k) => kifleketemas.add(k))
+      }
+    }
+
+    return Array.from(kifleketemas).sort()
+  }
+
+  // Filter stakeholder offices by selected kifleketema
+  const getFilteredStakeholderOffices = () => {
+    if (!performanceStats.byLocation || !performanceStats.byLocation.stakeholderOffices) {
+      return {}
+    }
+
+    if (selectedKifleketema === "all") {
+      return performanceStats.byLocation.stakeholderOffices
+    }
+
+    const filtered = {}
+    if (performanceStats.byLocation.stakeholderOffices[selectedKifleketema]) {
+      filtered[selectedKifleketema] = performanceStats.byLocation.stakeholderOffices[selectedKifleketema]
+    }
+
+    return filtered
+  }
+
+  // Filter wereda admins by selected kifleketema
+  const getFilteredWeredaAdmins = () => {
+    if (!performanceStats.byLocation || !performanceStats.byLocation.weredaAdmins) {
+      return {}
+    }
+
+    if (selectedKifleketema === "all") {
+      return performanceStats.byLocation.weredaAdmins
+    }
+
+    const filtered = {}
+    if (performanceStats.byLocation.weredaAdmins[selectedKifleketema]) {
+      filtered[selectedKifleketema] = performanceStats.byLocation.weredaAdmins[selectedKifleketema]
+    }
+
+    return filtered
+  }
+
+  // Filter kifleketema admins by selected kifleketema
+  const getFilteredKifleketemaAdmins = () => {
+    if (!performanceStats.byLocation || !performanceStats.byLocation.kifleketemaAdmins) {
+      return {}
+    }
+
+    if (selectedKifleketema === "all") {
+      return performanceStats.byLocation.kifleketemaAdmins
+    }
+
+    const filtered = {}
+    if (performanceStats.byLocation.kifleketemaAdmins[selectedKifleketema]) {
+      filtered[selectedKifleketema] = performanceStats.byLocation.kifleketemaAdmins[selectedKifleketema]
+    }
+
+    return filtered
+  }
+
   if (!user || user.role === USER_ROLES.CITIZEN) {
     return null
   }
 
   return (
     <div className="admin-dashboard">
-      <h2 className="dashboard-title">{getRoleName(user.role)} Dashboard</h2>
+      <h2 className="dashboard-title">
+        {getRoleName(user.role)} Dashboard
+        {adminInfo && adminInfo.kifleketema && (
+          <span className="dashboard-subtitle">
+            {adminInfo.kifleketema}
+            {adminInfo.wereda && `, ${adminInfo.wereda}`}
+          </span>
+        )}
+      </h2>
 
       <div className="stats-container">
         <div className="stat-card">
@@ -208,6 +326,25 @@ const AdminDashboard = () => {
         <div className="performance-dashboard">
           <h3 className="section-title">Office Performance Statistics</h3>
 
+          <div className="filter-container kifleketema-filter">
+            <label htmlFor="kifleketema-filter" className="filter-label">
+              Filter by Kifleketema:
+            </label>
+            <select
+              id="kifleketema-filter"
+              value={selectedKifleketema}
+              onChange={handleKifleketemaFilterChange}
+              className="filter-select"
+            >
+              <option value="all">All Kifleketemas</option>
+              {getAvailableKifleketemas().map((kifleketema) => (
+                <option key={kifleketema} value={kifleketema}>
+                  {kifleketema}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {loadingPerformance ? (
             <p className="loading-text">Loading performance statistics...</p>
           ) : (
@@ -215,131 +352,172 @@ const AdminDashboard = () => {
               {/* Stakeholder Offices Performance */}
               <div className="performance-section">
                 <h4 className="subsection-title">Stakeholder Offices Performance</h4>
-                {performanceStats.stakeholderOffices.length === 0 ? (
-                  <p className="no-data">No stakeholder office data available.</p>
+
+                {Object.keys(getFilteredStakeholderOffices()).length === 0 ? (
+                  <p className="no-data">No stakeholder office data available for the selected filter.</p>
                 ) : (
-                  <div className="performance-table-container">
-                    <table className="performance-table">
-                      <thead>
-                        <tr>
-                          <th>Office Name</th>
-                          <th>Office Type</th>
-                          <th>Total Complaints</th>
-                          <th>Resolved</th>
-                          <th>Escalated</th>
-                          <th>Resolution Rate</th>
-                          <th>Avg. Resolution Time</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {performanceStats.stakeholderOffices.map((office) => (
-                          <tr key={office._id}>
-                            <td>{office.officeName}</td>
-                            <td>{office.officeType.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}</td>
-                            <td>{office.totalComplaints}</td>
-                            <td>{office.resolvedComplaints}</td>
-                            <td>{office.escalatedComplaints}</td>
-                            <td>
-                              {office.totalComplaints > 0
-                                ? `${Math.round((office.resolvedComplaints / office.totalComplaints) * 100)}%`
-                                : "N/A"}
-                            </td>
-                            <td>
-                              {office.averageResolutionTime > 0
-                                ? `${office.averageResolutionTime.toFixed(1)} days`
-                                : "N/A"}
-                            </td>
-                          </tr>
+                  <>
+                    {Object.entries(getFilteredStakeholderOffices()).map(([kifleketema, weredas]) => (
+                      <div key={kifleketema} className="kifleketema-section">
+                        <h5 className="kifleketema-title">{kifleketema}</h5>
+
+                        {Object.entries(weredas).map(([wereda, offices]) => (
+                          <div key={`${kifleketema}-${wereda}`} className="wereda-section">
+                            <h6 className="wereda-title">{wereda}</h6>
+
+                            <div className="performance-table-container">
+                              <table className="performance-table">
+                                <thead>
+                                  <tr>
+                                    <th>Office Name</th>
+                                    <th>Office Type</th>
+                                    <th>Total Complaints</th>
+                                    <th>Resolved</th>
+                                    <th>Escalated</th>
+                                    <th>Resolution Rate</th>
+                                    <th>Avg. Resolution Time</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {offices.map((office) => (
+                                    <tr key={office._id}>
+                                      <td>{office.officeName}</td>
+                                      <td>
+                                        {office.officeType.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
+                                      </td>
+                                      <td>{office.totalComplaints}</td>
+                                      <td>{office.resolvedComplaints}</td>
+                                      <td>{office.escalatedComplaints}</td>
+                                      <td>
+                                        {office.totalComplaints > 0
+                                          ? `${Math.round((office.resolvedComplaints / office.totalComplaints) * 100)}%`
+                                          : "N/A"}
+                                      </td>
+                                      <td>
+                                        {office.averageResolutionTime > 0
+                                          ? `${office.averageResolutionTime.toFixed(1)} days`
+                                          : "N/A"}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
                         ))}
-                      </tbody>
-                    </table>
-                  </div>
+                      </div>
+                    ))}
+                  </>
                 )}
               </div>
 
               {/* Wereda Admins Performance */}
               <div className="performance-section">
                 <h4 className="subsection-title">Wereda Anti-Corruption Performance</h4>
-                {performanceStats.weredaAdmins.length === 0 ? (
-                  <p className="no-data">No Wereda admin data available.</p>
+
+                {Object.keys(getFilteredWeredaAdmins()).length === 0 ? (
+                  <p className="no-data">No Wereda admin data available for the selected filter.</p>
                 ) : (
-                  <div className="performance-table-container">
-                    <table className="performance-table">
-                      <thead>
-                        <tr>
-                          <th>Admin Name</th>
-                          <th>Total Complaints</th>
-                          <th>Resolved</th>
-                          <th>Escalated</th>
-                          <th>Resolution Rate</th>
-                          <th>Avg. Resolution Time</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {performanceStats.weredaAdmins.map((admin) => (
-                          <tr key={admin._id}>
-                            <td>{`${admin.firstName} ${admin.lastName}`}</td>
-                            <td>{admin.totalComplaints}</td>
-                            <td>{admin.resolvedComplaints}</td>
-                            <td>{admin.escalatedComplaints}</td>
-                            <td>
-                              {admin.totalComplaints > 0
-                                ? `${Math.round((admin.resolvedComplaints / admin.totalComplaints) * 100)}%`
-                                : "N/A"}
-                            </td>
-                            <td>
-                              {admin.averageResolutionTime > 0
-                                ? `${admin.averageResolutionTime.toFixed(1)} days`
-                                : "N/A"}
-                            </td>
-                          </tr>
+                  <>
+                    {Object.entries(getFilteredWeredaAdmins()).map(([kifleketema, weredas]) => (
+                      <div key={kifleketema} className="kifleketema-section">
+                        <h5 className="kifleketema-title">{kifleketema}</h5>
+
+                        {Object.entries(weredas).map(([wereda, admins]) => (
+                          <div key={`${kifleketema}-${wereda}`} className="wereda-section">
+                            <h6 className="wereda-title">{wereda}</h6>
+
+                            <div className="performance-table-container">
+                              <table className="performance-table">
+                                <thead>
+                                  <tr>
+                                    <th>Admin Name</th>
+                                    <th>Total Complaints</th>
+                                    <th>Resolved</th>
+                                    <th>Escalated</th>
+                                    <th>Resolution Rate</th>
+                                    <th>Avg. Resolution Time</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {admins.map((admin) => (
+                                    <tr key={admin._id}>
+                                      <td>{`${admin.firstName} ${admin.lastName}`}</td>
+                                      <td>{admin.totalComplaints}</td>
+                                      <td>{admin.resolvedComplaints}</td>
+                                      <td>{admin.escalatedComplaints}</td>
+                                      <td>
+                                        {admin.totalComplaints > 0
+                                          ? `${Math.round((admin.resolvedComplaints / admin.totalComplaints) * 100)}%`
+                                          : "N/A"}
+                                      </td>
+                                      <td>
+                                        {admin.averageResolutionTime > 0
+                                          ? `${admin.averageResolutionTime.toFixed(1)} days`
+                                          : "N/A"}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
                         ))}
-                      </tbody>
-                    </table>
-                  </div>
+                      </div>
+                    ))}
+                  </>
                 )}
               </div>
 
               {/* Kifleketema Admins Performance */}
               <div className="performance-section">
                 <h4 className="subsection-title">Kifleketema Anti-Corruption Performance</h4>
-                {performanceStats.kifleketemaAdmins.length === 0 ? (
-                  <p className="no-data">No Kifleketema admin data available.</p>
+
+                {Object.keys(getFilteredKifleketemaAdmins()).length === 0 ? (
+                  <p className="no-data">No Kifleketema admin data available for the selected filter.</p>
                 ) : (
-                  <div className="performance-table-container">
-                    <table className="performance-table">
-                      <thead>
-                        <tr>
-                          <th>Admin Name</th>
-                          <th>Total Complaints</th>
-                          <th>Resolved</th>
-                          <th>Escalated</th>
-                          <th>Resolution Rate</th>
-                          <th>Avg. Resolution Time</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {performanceStats.kifleketemaAdmins.map((admin) => (
-                          <tr key={admin._id}>
-                            <td>{`${admin.firstName} ${admin.lastName}`}</td>
-                            <td>{admin.totalComplaints}</td>
-                            <td>{admin.resolvedComplaints}</td>
-                            <td>{admin.escalatedComplaints}</td>
-                            <td>
-                              {admin.totalComplaints > 0
-                                ? `${Math.round((admin.resolvedComplaints / admin.totalComplaints) * 100)}%`
-                                : "N/A"}
-                            </td>
-                            <td>
-                              {admin.averageResolutionTime > 0
-                                ? `${admin.averageResolutionTime.toFixed(1)} days`
-                                : "N/A"}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                  <>
+                    {Object.entries(getFilteredKifleketemaAdmins()).map(([kifleketema, admins]) => (
+                      <div key={kifleketema} className="kifleketema-section">
+                        <h5 className="kifleketema-title">{kifleketema}</h5>
+
+                        <div className="performance-table-container">
+                          <table className="performance-table">
+                            <thead>
+                              <tr>
+                                <th>Admin Name</th>
+                                <th>Total Complaints</th>
+                                <th>Resolved</th>
+                                <th>Escalated</th>
+                                <th>Resolution Rate</th>
+                                <th>Avg. Resolution Time</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {admins.map((admin) => (
+                                <tr key={admin._id}>
+                                  <td>{`${admin.firstName} ${admin.lastName}`}</td>
+                                  <td>{admin.totalComplaints}</td>
+                                  <td>{admin.resolvedComplaints}</td>
+                                  <td>{admin.escalatedComplaints}</td>
+                                  <td>
+                                    {admin.totalComplaints > 0
+                                      ? `${Math.round((admin.resolvedComplaints / admin.totalComplaints) * 100)}%`
+                                      : "N/A"}
+                                  </td>
+                                  <td>
+                                    {admin.averageResolutionTime > 0
+                                      ? `${admin.averageResolutionTime.toFixed(1)} days`
+                                      : "N/A"}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    ))}
+                  </>
                 )}
               </div>
             </>

@@ -15,16 +15,19 @@ const AdminStatistics = () => {
       total: 0,
       approved: 0,
       pending: 0,
+      byLocation: {},
     },
     weredaAdmins: {
       total: 0,
       approved: 0,
       pending: 0,
+      byLocation: {},
     },
     kifleketemaAdmins: {
       total: 0,
       approved: 0,
       pending: 0,
+      byLocation: {},
     },
     kentibaAdmins: {
       total: 0,
@@ -93,81 +96,182 @@ const AdminStatistics = () => {
       {loading ? (
         <p className="loading-text">Loading statistics...</p>
       ) : (
-        <div className="statistics-grid">
-          <div className="stat-card">
-            <h3 className="stat-title">Citizens</h3>
-            <div className="stat-content">
-              <div className="stat-item">
-                <span className="stat-label">Total:</span>
-                <span className="stat-value">{stats.citizens.total}</span>
+        <>
+          <div className="statistics-grid">
+            <div className="stat-card">
+              <h3 className="stat-title">Citizens</h3>
+              <div className="stat-content">
+                <div className="stat-item">
+                  <span className="stat-label">Total:</span>
+                  <span className="stat-value">{stats.citizens.total}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="stat-card">
+              <h3 className="stat-title">Stakeholder Offices</h3>
+              <div className="stat-content">
+                <div className="stat-item">
+                  <span className="stat-label">Total:</span>
+                  <span className="stat-value">{stats.stakeholders.total}</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">Approved:</span>
+                  <span className="stat-value">{stats.stakeholders.approved}</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">Pending Approval:</span>
+                  <span className="stat-value">{stats.stakeholders.pending}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="stat-card">
+              <h3 className="stat-title">Wereda Administrators</h3>
+              <div className="stat-content">
+                <div className="stat-item">
+                  <span className="stat-label">Total:</span>
+                  <span className="stat-value">{stats.weredaAdmins.total}</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">Approved:</span>
+                  <span className="stat-value">{stats.weredaAdmins.approved}</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">Pending Approval:</span>
+                  <span className="stat-value">{stats.weredaAdmins.pending}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="stat-card">
+              <h3 className="stat-title">Kifleketema Administrators</h3>
+              <div className="stat-content">
+                <div className="stat-item">
+                  <span className="stat-label">Total:</span>
+                  <span className="stat-value">{stats.kifleketemaAdmins.total}</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">Approved:</span>
+                  <span className="stat-value">{stats.kifleketemaAdmins.approved}</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">Pending Approval:</span>
+                  <span className="stat-value">{stats.kifleketemaAdmins.pending}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="stat-card">
+              <h3 className="stat-title">Kentiba Biro Administrators</h3>
+              <div className="stat-content">
+                <div className="stat-item">
+                  <span className="stat-label">Total:</span>
+                  <span className="stat-value">{stats.kentibaAdmins.total}</span>
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="stat-card">
-            <h3 className="stat-title">Stakeholder Offices</h3>
-            <div className="stat-content">
-              <div className="stat-item">
-                <span className="stat-label">Total:</span>
-                <span className="stat-value">{stats.stakeholders.total}</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-label">Approved:</span>
-                <span className="stat-value">{stats.stakeholders.approved}</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-label">Pending Approval:</span>
-                <span className="stat-value">{stats.stakeholders.pending}</span>
+          {/* Stakeholder Offices by Location */}
+          {stats.stakeholders.byLocation && Object.keys(stats.stakeholders.byLocation).length > 0 && (
+            <div className="location-statistics">
+              <h3 className="section-title">Stakeholder Offices by Location</h3>
+              <div className="location-table-container">
+                <table className="location-table">
+                  <thead>
+                    <tr>
+                      <th>Kifleketema</th>
+                      <th>Wereda</th>
+                      <th>Total Offices</th>
+                      <th>Approved</th>
+                      <th>Pending</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.entries(stats.stakeholders.byLocation).map(([kifleketema, weredas]) => (
+                      <>
+                        {Object.entries(weredas).map(([wereda, counts], index) => (
+                          <tr key={`${kifleketema}-${wereda}`}>
+                            {index === 0 ? <td rowSpan={Object.keys(weredas).length}>{kifleketema}</td> : null}
+                            <td>{wereda}</td>
+                            <td>{counts.total}</td>
+                            <td>{counts.approved}</td>
+                            <td>{counts.pending}</td>
+                          </tr>
+                        ))}
+                      </>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
-          </div>
+          )}
 
-          <div className="stat-card">
-            <h3 className="stat-title">Wereda Administrators</h3>
-            <div className="stat-content">
-              <div className="stat-item">
-                <span className="stat-label">Total:</span>
-                <span className="stat-value">{stats.weredaAdmins.total}</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-label">Approved:</span>
-                <span className="stat-value">{stats.weredaAdmins.approved}</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-label">Pending Approval:</span>
-                <span className="stat-value">{stats.weredaAdmins.pending}</span>
+          {/* Wereda Administrators by Location */}
+          {stats.weredaAdmins.byLocation && Object.keys(stats.weredaAdmins.byLocation).length > 0 && (
+            <div className="location-statistics">
+              <h3 className="section-title">Wereda Administrators by Location</h3>
+              <div className="location-table-container">
+                <table className="location-table">
+                  <thead>
+                    <tr>
+                      <th>Kifleketema</th>
+                      <th>Wereda</th>
+                      <th>Total Admins</th>
+                      <th>Approved</th>
+                      <th>Pending</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.entries(stats.weredaAdmins.byLocation).map(([kifleketema, weredas]) => (
+                      <>
+                        {Object.entries(weredas).map(([wereda, counts], index) => (
+                          <tr key={`${kifleketema}-${wereda}`}>
+                            {index === 0 ? <td rowSpan={Object.keys(weredas).length}>{kifleketema}</td> : null}
+                            <td>{wereda}</td>
+                            <td>{counts.total}</td>
+                            <td>{counts.approved}</td>
+                            <td>{counts.pending}</td>
+                          </tr>
+                        ))}
+                      </>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
-          </div>
+          )}
 
-          <div className="stat-card">
-            <h3 className="stat-title">Kifleketema Administrators</h3>
-            <div className="stat-content">
-              <div className="stat-item">
-                <span className="stat-label">Total:</span>
-                <span className="stat-value">{stats.kifleketemaAdmins.total}</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-label">Approved:</span>
-                <span className="stat-value">{stats.kifleketemaAdmins.approved}</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-label">Pending Approval:</span>
-                <span className="stat-value">{stats.kifleketemaAdmins.pending}</span>
+          {/* Kifleketema Administrators by Location */}
+          {stats.kifleketemaAdmins.byLocation && Object.keys(stats.kifleketemaAdmins.byLocation).length > 0 && (
+            <div className="location-statistics">
+              <h3 className="section-title">Kifleketema Administrators by Location</h3>
+              <div className="location-table-container">
+                <table className="location-table">
+                  <thead>
+                    <tr>
+                      <th>Kifleketema</th>
+                      <th>Total Admins</th>
+                      <th>Approved</th>
+                      <th>Pending</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.entries(stats.kifleketemaAdmins.byLocation).map(([kifleketema, counts]) => (
+                      <tr key={kifleketema}>
+                        <td>{kifleketema}</td>
+                        <td>{counts.total}</td>
+                        <td>{counts.approved}</td>
+                        <td>{counts.pending}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
-          </div>
-
-          <div className="stat-card">
-            <h3 className="stat-title">Kentiba Biro Administrators</h3>
-            <div className="stat-content">
-              <div className="stat-item">
-                <span className="stat-label">Total:</span>
-                <span className="stat-value">{stats.kentibaAdmins.total}</span>
-              </div>
-            </div>
-          </div>
-        </div>
+          )}
+        </>
       )}
     </div>
   )
