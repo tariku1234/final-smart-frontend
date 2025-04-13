@@ -165,14 +165,19 @@ const ComplaintDetail = () => {
     }
   }
 
+  // Update the canSubmitSecondStage function to include Kifleketema
+
   // Update the canSubmitSecondStage function to include Wereda first stage
   const canSubmitSecondStage = (complaint) => {
-    // Can submit second stage if the complaint is in the first stage (stakeholder or wereda) and has a response
+    // Can submit second stage if the complaint is in the first stage (stakeholder or wereda or kifleketema) and has a response
     return (
-      (complaint.currentStage === "stakeholder_first" || complaint.currentStage === "wereda_first") &&
+      (complaint.currentStage === "stakeholder_first" ||
+        complaint.currentStage === "wereda_first" ||
+        complaint.currentStage === "kifleketema_first") &&
       complaint.responses &&
       complaint.responses.length > 0 &&
-      complaint.status !== "resolved"
+      complaint.status !== "resolved" &&
+      !complaint.secondStageComplaint // Ensure no second stage complaint exists already
     )
   }
 
@@ -326,32 +331,34 @@ const ComplaintDetail = () => {
     // Sort responses by date
     const sortedResponses = [...complaint.responses].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
 
-    // Assign responses to stages based on their order
+    // Assign responses to stages based on their stage field if available, or responderRole and order
     sortedResponses.forEach((response, index) => {
-      switch (index) {
-        case 0:
-          responsesByStage.stakeholder_first.push(response)
-          break
-        case 1:
-          responsesByStage.stakeholder_second.push(response)
-          break
-        case 2:
-          responsesByStage.wereda_first.push(response)
-          break
-        case 3:
-          responsesByStage.wereda_second.push(response)
-          break
-        case 4:
-          responsesByStage.kifleketema_first.push(response)
-          break
-        case 5:
-          responsesByStage.kifleketema_second.push(response)
-          break
-        case 6:
+      if (response.stage) {
+        // If the response has a stage field, use it
+        responsesByStage[response.stage].push(response)
+      } else {
+        // Fallback to the old logic
+        if (response.responderRole === "stakeholder_office") {
+          if (index === 0) {
+            responsesByStage.stakeholder_first.push(response)
+          } else {
+            responsesByStage.stakeholder_second.push(response)
+          }
+        } else if (response.responderRole === "wereda_anti_corruption") {
+          if (responsesByStage.wereda_first.length === 0) {
+            responsesByStage.wereda_first.push(response)
+          } else {
+            responsesByStage.wereda_second.push(response)
+          }
+        } else if (response.responderRole === "kifleketema_anti_corruption") {
+          if (responsesByStage.kifleketema_first.length === 0) {
+            responsesByStage.kifleketema_first.push(response)
+          } else {
+            responsesByStage.kifleketema_second.push(response)
+          }
+        } else if (response.responderRole === "kentiba_biro") {
           responsesByStage.kentiba.push(response)
-          break
-        default:
-          break
+        }
       }
     })
 
@@ -909,4 +916,3 @@ const ComplaintDetail = () => {
 }
 
 export default ComplaintDetail
-

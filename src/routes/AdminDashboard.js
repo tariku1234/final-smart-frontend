@@ -4,7 +4,7 @@ import { useState, useEffect, useContext } from "react"
 import { useNavigate } from "react-router-dom"
 import { AuthContext } from "../context/AuthContext"
 import ComplaintCard from "../components/ComplaintCard"
-import { API_URL, USER_ROLES, COMPLAINT_STAGES } from "../config"
+import { API_URL, USER_ROLES } from "../config"
 import "./AdminDashboard.css"
 
 const AdminDashboard = () => {
@@ -22,14 +22,6 @@ const AdminDashboard = () => {
     resolved: 0,
     escalated: 0,
   })
-
-  // Performance stats for Kentiba Biro
-  const [performanceStats, setPerformanceStats] = useState({
-    stakeholderOffices: [],
-    weredaAdmins: [],
-    kifleketemaAdmins: [],
-  })
-  const [loadingPerformance, setLoadingPerformance] = useState(false)
 
   // Redirect if not logged in or not an admin
   useEffect(() => {
@@ -53,15 +45,12 @@ const AdminDashboard = () => {
         const token = localStorage.getItem("token")
         let url = `${API_URL}/api/complaints`
 
-        // For Kentiba Biro, only show complaints escalated to Kentiba level
-        if (user.role === USER_ROLES.KENTIBA_BIRO) {
-          url += `?stage=${COMPLAINT_STAGES.KENTIBA}`
-        }
-
         // Add query parameters based on filter
         if (filter !== "all") {
-          url += user.role === USER_ROLES.KENTIBA_BIRO ? `&status=${filter}` : `?status=${filter}`
+          url += `?status=${filter}`
         }
+
+        console.log("Fetching complaints from:", url)
 
         const response = await fetch(url, {
           headers: {
@@ -70,10 +59,14 @@ const AdminDashboard = () => {
         })
 
         if (!response.ok) {
+          const errorText = await response.text()
+          console.error("Server response:", errorText)
           throw new Error(`Server responded with status: ${response.status}`)
         }
 
         const data = await response.json()
+        console.log("Complaints data:", data)
+
         setComplaints(data.complaints || [])
 
         // Calculate stats from the complaints
@@ -119,39 +112,6 @@ const AdminDashboard = () => {
       fetchComplaints()
     }
   }, [user, filter])
-
-  // Fetch performance statistics for Kentiba Biro
-  useEffect(() => {
-    const fetchPerformanceStats = async () => {
-      if (!user || user.role !== USER_ROLES.KENTIBA_BIRO) return
-
-      setLoadingPerformance(true)
-      try {
-        const token = localStorage.getItem("token")
-        const response = await fetch(`${API_URL}/api/admin/performance-stats`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        })
-
-        if (!response.ok) {
-          throw new Error(`Server responded with status: ${response.status}`)
-        }
-
-        const data = await response.json()
-        setPerformanceStats(data.stats)
-      } catch (err) {
-        console.error("Error fetching performance stats:", err)
-        // Don't set main error to avoid disrupting the UI
-      } finally {
-        setLoadingPerformance(false)
-      }
-    }
-
-    if (user && user.role === USER_ROLES.KENTIBA_BIRO) {
-      fetchPerformanceStats()
-    }
-  }, [user])
 
   const handleFilterChange = (e) => {
     setFilter(e.target.value)
@@ -204,149 +164,6 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      {user.role === USER_ROLES.KENTIBA_BIRO && (
-        <div className="performance-dashboard">
-          <h3 className="section-title">Office Performance Statistics</h3>
-
-          {loadingPerformance ? (
-            <p className="loading-text">Loading performance statistics...</p>
-          ) : (
-            <>
-              {/* Stakeholder Offices Performance */}
-              <div className="performance-section">
-                <h4 className="subsection-title">Stakeholder Offices Performance</h4>
-                {performanceStats.stakeholderOffices.length === 0 ? (
-                  <p className="no-data">No stakeholder office data available.</p>
-                ) : (
-                  <div className="performance-table-container">
-                    <table className="performance-table">
-                      <thead>
-                        <tr>
-                          <th>Office Name</th>
-                          <th>Office Type</th>
-                          <th>Total Complaints</th>
-                          <th>Resolved</th>
-                          <th>Escalated</th>
-                          <th>Resolution Rate</th>
-                          <th>Avg. Resolution Time</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {performanceStats.stakeholderOffices.map((office) => (
-                          <tr key={office._id}>
-                            <td>{office.officeName}</td>
-                            <td>{office.officeType.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}</td>
-                            <td>{office.totalComplaints}</td>
-                            <td>{office.resolvedComplaints}</td>
-                            <td>{office.escalatedComplaints}</td>
-                            <td>
-                              {office.totalComplaints > 0
-                                ? `${Math.round((office.resolvedComplaints / office.totalComplaints) * 100)}%`
-                                : "N/A"}
-                            </td>
-                            <td>
-                              {office.averageResolutionTime > 0
-                                ? `${office.averageResolutionTime.toFixed(1)} days`
-                                : "N/A"}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-
-              {/* Wereda Admins Performance */}
-              <div className="performance-section">
-                <h4 className="subsection-title">Wereda Anti-Corruption Performance</h4>
-                {performanceStats.weredaAdmins.length === 0 ? (
-                  <p className="no-data">No Wereda admin data available.</p>
-                ) : (
-                  <div className="performance-table-container">
-                    <table className="performance-table">
-                      <thead>
-                        <tr>
-                          <th>Admin Name</th>
-                          <th>Total Complaints</th>
-                          <th>Resolved</th>
-                          <th>Escalated</th>
-                          <th>Resolution Rate</th>
-                          <th>Avg. Resolution Time</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {performanceStats.weredaAdmins.map((admin) => (
-                          <tr key={admin._id}>
-                            <td>{`${admin.firstName} ${admin.lastName}`}</td>
-                            <td>{admin.totalComplaints}</td>
-                            <td>{admin.resolvedComplaints}</td>
-                            <td>{admin.escalatedComplaints}</td>
-                            <td>
-                              {admin.totalComplaints > 0
-                                ? `${Math.round((admin.resolvedComplaints / admin.totalComplaints) * 100)}%`
-                                : "N/A"}
-                            </td>
-                            <td>
-                              {admin.averageResolutionTime > 0
-                                ? `${admin.averageResolutionTime.toFixed(1)} days`
-                                : "N/A"}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-
-              {/* Kifleketema Admins Performance */}
-              <div className="performance-section">
-                <h4 className="subsection-title">Kifleketema Anti-Corruption Performance</h4>
-                {performanceStats.kifleketemaAdmins.length === 0 ? (
-                  <p className="no-data">No Kifleketema admin data available.</p>
-                ) : (
-                  <div className="performance-table-container">
-                    <table className="performance-table">
-                      <thead>
-                        <tr>
-                          <th>Admin Name</th>
-                          <th>Total Complaints</th>
-                          <th>Resolved</th>
-                          <th>Escalated</th>
-                          <th>Resolution Rate</th>
-                          <th>Avg. Resolution Time</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {performanceStats.kifleketemaAdmins.map((admin) => (
-                          <tr key={admin._id}>
-                            <td>{`${admin.firstName} ${admin.lastName}`}</td>
-                            <td>{admin.totalComplaints}</td>
-                            <td>{admin.resolvedComplaints}</td>
-                            <td>{admin.escalatedComplaints}</td>
-                            <td>
-                              {admin.totalComplaints > 0
-                                ? `${Math.round((admin.resolvedComplaints / admin.totalComplaints) * 100)}%`
-                                : "N/A"}
-                            </td>
-                            <td>
-                              {admin.averageResolutionTime > 0
-                                ? `${admin.averageResolutionTime.toFixed(1)} days`
-                                : "N/A"}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-        </div>
-      )}
-
       <div className="filter-container">
         <label htmlFor="filter" className="filter-label">
           Filter by Status:
@@ -378,4 +195,3 @@ const AdminDashboard = () => {
 }
 
 export default AdminDashboard
-

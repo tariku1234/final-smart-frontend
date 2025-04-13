@@ -80,7 +80,9 @@ const ComplaintForm = () => {
         if (response.ok) {
           // Check if the complaint has a response and is in the correct stage
           if (
-            (data.complaint.currentStage === "stakeholder_first" || data.complaint.currentStage === "wereda_first") &&
+            (data.complaint.currentStage === "stakeholder_first" ||
+              data.complaint.currentStage === "wereda_first" ||
+              data.complaint.currentStage === "kifleketema_first") &&
             data.complaint.responses &&
             data.complaint.responses.length > 0 &&
             data.complaint.status === "in_progress"
@@ -436,4 +438,3 @@ const ComplaintForm = () => {
 }
 
 export default ComplaintForm
-
